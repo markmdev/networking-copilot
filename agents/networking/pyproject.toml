@@ -10,7 +10,8 @@ dependencies = [
     "uvicorn[standard]>=0.30.0,<1.0.0",
     "httpx>=0.27.0,<1.0.0",
     "pyyaml>=6.0.0,<7.0.0",
-    "openai>=1.48.0,<2.0.0"
+    "openai>=1.48.0,<2.0.0",
+    "agentic-doc>=0.3.3",
 ]
 
 [project.scripts]
