@@ -16,6 +16,7 @@ from networking.clients import (
     LinkedInFetcher,
     LinkedInSearchClient,
 )
+from networking.cache import get_cached_lookup, set_cached_lookup
 from networking.execution import run_networking_crew, select_profile
 from networking.image_extractor import extract_from_image
 
@@ -115,6 +116,10 @@ def search_profile(payload: SearchRequest) -> Dict[str, Any]:
 def search_and_enrich(payload: SearchRequest) -> Dict[str, Any]:
     """Search for a person, fetch their profile, and run the Networking crew."""
 
+    cached = get_cached_lookup(payload.first_name, payload.last_name)
+    if cached:
+        return cached
+
     selected_profile, rationale, _ = _search_and_select(payload)
 
     profile_url = selected_profile.get("url")
@@ -154,11 +159,15 @@ def search_and_enrich(payload: SearchRequest) -> Dict[str, Any]:
         "avatar": selected_profile.get("avatar"),
     }
 
-    return {
+    result = {
         "person": person,
         "selector_rationale": rationale,
         "crew_outputs": crew_outputs,
     }
+
+    set_cached_lookup(payload.first_name, payload.last_name, result)
+
+    return result
 
 
 @app.post("/extract-image")
@@ -197,121 +206,46 @@ async def extract_image(file: UploadFile = File(...)) -> Dict[str, Any]:
 async def extract_and_lookup(file: UploadFile = File(...)) -> Dict[str, Any]:
     """Extract info from an image, then run lookup on the parsed person."""
 
-    print(f"🔥 extract-and-lookup called with file: {file.filename}")
-    print(f"📁 File details: size={file.size}, content_type={file.content_type}")
-    
-    try:
-        print("📸 Step 1: Calling extract_image...")
-        extraction = await extract_image(file)  # type: ignore[arg-type]
-        print(f"✅ Step 1 complete: {extraction.get('filename', 'unknown')}")
-        
-        extracted = extraction["extracted"]
-        print(f"📄 Extracted data: {extracted}")
+extraction = await extract_image(file)  # type: ignore[arg-type]
+    extracted = extraction["extracted"]
 
-        basic_info = extracted.get("basic_info", {}) if isinstance(extracted, dict) else {}
-        names = basic_info.get("names", "") if isinstance(basic_info, dict) else ""
-        print(f"👤 Names extracted: '{names}'")
-        
-        if not names:
-            print("❌ No names found in extracted data")
-            raise HTTPException(status_code=502, detail="Unable to extract names from the image")
+    basic_info = extracted.get("basic_info", {}) if isinstance(extracted, dict) else {}
+    names = basic_info.get("names", "") if isinstance(basic_info, dict) else ""
+    if not names:
+        raise HTTPException(status_code=502, detail="Unable to extract names from the image")
 
-        parts = names.split()
-        if len(parts) == 1:
-            first_name, last_name = parts[0], parts[0]
-        else:
-            first_name, last_name = parts[0], " ".join(parts[1:])
-        
-        print(f"✂️ Name parts: first='{first_name}', last='{last_name}'")
+    parts = names.split()
+    if len(parts) == 1:
+        first_name, last_name = parts[0], parts[0]
+    else:
+        first_name, last_name = parts[0], " ".join(parts[1:])
 
-        additional_context = extracted.get("links", {}) if isinstance(extracted, dict) else {}
-        context_parts = []
-        if isinstance(additional_context, dict):
-            for key in ("linkedin", "website", "github"):
-                value = additional_context.get(key)
-                if value:
-                    context_parts.append(f"{key}: {value}")
-        company = basic_info.get("company") if isinstance(basic_info, dict) else None
-        if company:
-            context_parts.append(f"company: {company}")
-        
-        print(f"🔍 Search context: {context_parts}")
+    additional_context = extracted.get("links", {}) if isinstance(extracted, dict) else {}
+    context_parts = []
+    if isinstance(additional_context, dict):
+        for key in ("linkedin", "website", "github"):
+            value = additional_context.get(key)
+            if value:
+                context_parts.append(f"{key}: {value}")
+    company = basic_info.get("company") if isinstance(basic_info, dict) else None
+    if company:
+        context_parts.append(f"company: {company}")
 
-        search_payload = SearchRequest(
-            first_name=first_name,
-            last_name=last_name,
-            additional_context=", ".join(context_parts) or None,
-        )
+    search_payload = SearchRequest(
+        first_name=first_name,
+        last_name=last_name,
+        additional_context=", ".join(context_parts) or None,
+    )
 
-        print("🔎 Step 2: Searching and selecting profile...")
-        selected_profile, rationale, _ = _search_and_select(search_payload)
-        print(f"✅ Step 2 complete: Selected {selected_profile.get('name', 'unknown')}")
+    lookup_result = search_and_enrich(search_payload)
 
-        profile_url = selected_profile.get("url")
-        if not profile_url:
-            print("❌ No URL in selected profile")
-            raise HTTPException(status_code=502, detail="Selected profile does not include a LinkedIn URL")
-
-        normalized_url = _normalize_linkedin_profile_url(profile_url)
-        print(f"🔗 Normalized URL: {normalized_url}")
-
-        try:
-            print("📊 Step 3: Fetching LinkedIn profile...")
-            fetcher = LinkedInFetcher()
-        except ValueError as exc:
-            print(f"❌ Failed to create LinkedInFetcher: {exc}")
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-        try:
-            snapshot = fetcher.fetch_profile(normalized_url)
-            print(f"✅ Step 3 complete: Got {len(snapshot.get('records', []))} records")
-        except BrightDataError as exc:
-            print(f"❌ BrightData error: {exc}")
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-        records = snapshot.get("records", [])
-        if not records:
-            print("❌ No records in LinkedIn snapshot")
-            raise HTTPException(status_code=502, detail="LinkedIn snapshot returned no profile records")
-
-        profile_data = records[0]
-        print(f"👤 Profile data keys: {list(profile_data.keys()) if isinstance(profile_data, dict) else 'not a dict'}")
-
-        try:
-            print("🤖 Step 4: Running networking crew...")
-            crew_outputs = run_networking_crew(profile_data)
-            print(f"✅ Step 4 complete: Generated outputs for {len(crew_outputs)} tasks")
-        except Exception as exc:  # pragma: no cover - surface crew execution issues
-            print(f"❌ Crew execution failed: {exc}")
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-        person = {
-            "url": normalized_url,
-            "name": selected_profile.get("name"),
-            "subtitle": selected_profile.get("subtitle"),
-            "location": selected_profile.get("location"),
-            "experience": selected_profile.get("experience"),
-            "education": selected_profile.get("education"),
-            "avatar": selected_profile.get("avatar"),
-        }
-
-        result = {
-            "filename": extraction["filename"],
-            "markdown": extraction["markdown"],
-            "person": person,
-            "selector_rationale": rationale,
-            "crew_outputs": crew_outputs,
-        }
-        
-        print("🎉 extract-and-lookup completed successfully!")
-        return result
-        
-    except HTTPException:
-        # Re-raise HTTP exceptions as-is
-        raise
-    except Exception as exc:
-        print(f"💥 Unexpected error in extract-and-lookup: {exc}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(exc)}") from exc
+    combined = {
+        "filename": extraction["filename"],
+        "markdown": extraction["markdown"],
+        "extracted": extracted,
+    }
+    combined.update(lookup_result)
+    return combined
 
 
 def _build_search_criteria(payload: SearchRequest) -> str:
