@@ -16,6 +16,7 @@ from networking.clients import (
     LinkedInFetcher,
     LinkedInSearchClient,
 )
+from networking.cache import get_cached_lookup, set_cached_lookup
 from networking.execution import run_networking_crew, select_profile
 from networking.image_extractor import extract_from_image
 
@@ -115,6 +116,10 @@ def search_profile(payload: SearchRequest) -> Dict[str, Any]:
 def search_and_enrich(payload: SearchRequest) -> Dict[str, Any]:
     """Search for a person, fetch their profile, and run the Networking crew."""
 
+    cached = get_cached_lookup(payload.first_name, payload.last_name)
+    if cached:
+        return cached
+
     selected_profile, rationale, _ = _search_and_select(payload)
 
     profile_url = selected_profile.get("url")
@@ -154,11 +159,15 @@ def search_and_enrich(payload: SearchRequest) -> Dict[str, Any]:
         "avatar": selected_profile.get("avatar"),
     }
 
-    return {
+    result = {
         "person": person,
         "selector_rationale": rationale,
         "crew_outputs": crew_outputs,
     }
+
+    set_cached_lookup(payload.first_name, payload.last_name, result)
+
+    return result
 
 
 @app.post("/extract-image")
@@ -228,52 +237,15 @@ async def extract_and_lookup(file: UploadFile = File(...)) -> Dict[str, Any]:
         additional_context=", ".join(context_parts) or None,
     )
 
-    selected_profile, rationale, _ = _search_and_select(search_payload)
+    lookup_result = search_and_enrich(search_payload)
 
-    profile_url = selected_profile.get("url")
-    if not profile_url:
-        raise HTTPException(status_code=502, detail="Selected profile does not include a LinkedIn URL")
-
-    normalized_url = _normalize_linkedin_profile_url(profile_url)
-
-    try:
-        fetcher = LinkedInFetcher()
-    except ValueError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    try:
-        snapshot = fetcher.fetch_profile(normalized_url)
-    except BrightDataError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-    records = snapshot.get("records", [])
-    if not records:
-        raise HTTPException(status_code=502, detail="LinkedIn snapshot returned no profile records")
-
-    profile_data = records[0]
-
-    try:
-        crew_outputs = run_networking_crew(profile_data)
-    except Exception as exc:  # pragma: no cover - surface crew execution issues
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    person = {
-        "url": normalized_url,
-        "name": selected_profile.get("name"),
-        "subtitle": selected_profile.get("subtitle"),
-        "location": selected_profile.get("location"),
-        "experience": selected_profile.get("experience"),
-        "education": selected_profile.get("education"),
-        "avatar": selected_profile.get("avatar"),
-    }
-
-    return {
+    combined = {
         "filename": extraction["filename"],
         "markdown": extraction["markdown"],
-        "person": person,
-        "selector_rationale": rationale,
-        "crew_outputs": crew_outputs,
+        "extracted": extracted,
     }
+    combined.update(lookup_result)
+    return combined
 
 
 def _build_search_criteria(payload: SearchRequest) -> str:

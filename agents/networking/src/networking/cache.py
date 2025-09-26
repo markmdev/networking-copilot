@@ -32,22 +32,21 @@ def _get_redis_client() -> Optional[redis.Redis]:
     return _redis_client
 
 
-def _build_lookup_cache_key(first_name: str, last_name: str, context: Optional[str]) -> str:
+def _build_lookup_cache_key(first_name: str, last_name: str) -> str:
     payload = {
         "first": first_name.strip().lower(),
         "last": last_name.strip().lower(),
-        "context": (context or "").strip().lower(),
     }
     digest = sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
     return f"lookup:{digest}"
 
 
-def get_cached_lookup(first_name: str, last_name: str, context: Optional[str]) -> Optional[Dict[str, Any]]:
+def get_cached_lookup(first_name: str, last_name: str) -> Optional[Dict[str, Any]]:
     client = _get_redis_client()
     if client is None:
         return None
 
-    key = _build_lookup_cache_key(first_name, last_name, context)
+    key = _build_lookup_cache_key(first_name, last_name)
     try:
         value = client.get(key)
     except redis.exceptions.RedisError:
@@ -62,12 +61,12 @@ def get_cached_lookup(first_name: str, last_name: str, context: Optional[str]) -
         return None
 
 
-def set_cached_lookup(first_name: str, last_name: str, context: Optional[str], result: Dict[str, Any]) -> None:
+def set_cached_lookup(first_name: str, last_name: str, result: Dict[str, Any]) -> None:
     client = _get_redis_client()
     if client is None:
         return
 
-    key = _build_lookup_cache_key(first_name, last_name, context)
+    key = _build_lookup_cache_key(first_name, last_name)
     try:
         client.setex(key, _CACHE_TTL_SECONDS, json.dumps(result))
     except redis.exceptions.RedisError:
