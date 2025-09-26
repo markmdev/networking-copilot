@@ -7,12 +7,12 @@
     "experience": "crewAI, +7 more",
     "education": ", +2 more",
     "avatar": "https://static.licdn.com/aero-v1/sc/h/1c5u578iilxfi4m4dvc4q810q",
-    "timestamp": "2025-09-26T21:32:22.504Z",
+    "timestamp": "2025-09-26T22:20:02.653Z",
     "input": {
       "url": "https://www.linkedin.com",
       "first_name": "Tony",
       "last_name": "Kipkemboi"
     }
   },
-  "rationale": "The selected profile is based in the Washington DC-Baltimore Area, which is within the United States and closer to considered tech hubs compared to other candidates based internationally, mainly Kenya and Finland. This profile also has experience in a tech company (crewAI), aligning with the fallback criteria of technology-focused professionals in the US."
+  "rationale": "This candidate is based in the Washington DC-Baltimore Area, a major US location, and is associated with CrewAI, which matches the additional hints provided. No other profiles meet the US location requirement or have relevant company experience."
 }

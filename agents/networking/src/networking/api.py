@@ -193,6 +193,89 @@ async def extract_image(file: UploadFile = File(...)) -> Dict[str, Any]:
     }
 
 
+@app.post("/extract-and-lookup")
+async def extract_and_lookup(file: UploadFile = File(...)) -> Dict[str, Any]:
+    """Extract info from an image, then run lookup on the parsed person."""
+
+    extraction = await extract_image(file)  # type: ignore[arg-type]
+    extracted = extraction["extracted"]
+
+    basic_info = extracted.get("basic_info", {}) if isinstance(extracted, dict) else {}
+    names = basic_info.get("names", "") if isinstance(basic_info, dict) else ""
+    if not names:
+        raise HTTPException(status_code=502, detail="Unable to extract names from the image")
+
+    parts = names.split()
+    if len(parts) == 1:
+        first_name, last_name = parts[0], parts[0]
+    else:
+        first_name, last_name = parts[0], " ".join(parts[1:])
+
+    additional_context = extracted.get("links", {}) if isinstance(extracted, dict) else {}
+    context_parts = []
+    if isinstance(additional_context, dict):
+        for key in ("linkedin", "website", "github"):
+            value = additional_context.get(key)
+            if value:
+                context_parts.append(f"{key}: {value}")
+    company = basic_info.get("company") if isinstance(basic_info, dict) else None
+    if company:
+        context_parts.append(f"company: {company}")
+
+    search_payload = SearchRequest(
+        first_name=first_name,
+        last_name=last_name,
+        additional_context=", ".join(context_parts) or None,
+    )
+
+    selected_profile, rationale, _ = _search_and_select(search_payload)
+
+    profile_url = selected_profile.get("url")
+    if not profile_url:
+        raise HTTPException(status_code=502, detail="Selected profile does not include a LinkedIn URL")
+
+    normalized_url = _normalize_linkedin_profile_url(profile_url)
+
+    try:
+        fetcher = LinkedInFetcher()
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    try:
+        snapshot = fetcher.fetch_profile(normalized_url)
+    except BrightDataError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    records = snapshot.get("records", [])
+    if not records:
+        raise HTTPException(status_code=502, detail="LinkedIn snapshot returned no profile records")
+
+    profile_data = records[0]
+
+    try:
+        crew_outputs = run_networking_crew(profile_data)
+    except Exception as exc:  # pragma: no cover - surface crew execution issues
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    person = {
+        "url": normalized_url,
+        "name": selected_profile.get("name"),
+        "subtitle": selected_profile.get("subtitle"),
+        "location": selected_profile.get("location"),
+        "experience": selected_profile.get("experience"),
+        "education": selected_profile.get("education"),
+        "avatar": selected_profile.get("avatar"),
+    }
+
+    return {
+        "filename": extraction["filename"],
+        "markdown": extraction["markdown"],
+        "person": person,
+        "selector_rationale": rationale,
+        "crew_outputs": crew_outputs,
+    }
+
+
 def _build_search_criteria(payload: SearchRequest) -> str:
     """Construct guidance for the selector agent based on provided hints."""
 

@@ -280,3 +280,36 @@ file=@badge.jpg
 
 UI can display `extracted` as the structured payload and optionally show the `markdown` as a preview of the OCR
 results.
+
+## POST /extract-and-lookup
+
+One-shot pipeline: upload an image, extract contact details, search LinkedIn, and run the full Networking crew.
+Response mirrors `/lookup` and includes the OCR metadata.
+
+**Request**: multipart/form-data with `file`.
+
+**Response** `200 OK`
+```json
+{
+  "filename": "badge.jpg",
+  "markdown": "...OCR markdown...",
+  "person": {
+    "url": "https://www.linkedin.com/in/example",
+    "name": "Example Person",
+    "subtitle": "Product Manager at Example",
+    "location": "San Francisco Bay Area",
+    "experience": "Example Corp, +2 more",
+    "education": "Example University",
+    "avatar": "https://..."
+  },
+  "selector_rationale": "Why the profile was chosen.",
+  "crew_outputs": {
+    "linkedin_profile_analyzer_task": { ... },
+    "summary_generator_task": { ... },
+    "icebreaker_generator_task": { ... }
+  }
+}
+```
+
+Errors follow the combined rules of `/extract-image`, `/search`, and `/lookup` (e.g., 422 for missing file, 502 for Bright
+Data issues, 500 for extraction or crew failures).
