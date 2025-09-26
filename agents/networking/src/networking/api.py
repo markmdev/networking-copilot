@@ -80,6 +80,10 @@ class SearchRequest(BaseModel):
     )
 
 
+class ChatRequest(BaseModel):
+    message: str = Field(..., description="User message to answer using stored contacts")
+
+
 @app.get("/health")
 def healthcheck() -> Dict[str, str]:
     """Confirm the API is alive."""
@@ -304,6 +308,53 @@ def get_person(person_id: str) -> Dict[str, Any]:
     return record
 
 
+@app.post("/chat")
+def chat(payload: ChatRequest) -> Dict[str, str]:
+    """Provide lightweight chat responses using stored people information."""
+
+    message = (payload.message or "").strip()
+    if not message:
+        raise HTTPException(status_code=422, detail="Message cannot be empty")
+
+    records = list_person_records(limit=200)
+    if not records:
+        return {
+            "reply": "I don't have any captured contacts yet. Try scanning a badge or business card first."
+        }
+
+    message_lower = message.lower()
+    matched: List[Dict[str, Any]] = []
+
+    for record in records:
+        person = record.get("person", {}) or {}
+        name = (person.get("name") or "").strip()
+        if not name:
+            continue
+        name_lower = name.lower()
+        tokens = [token for token in name_lower.split() if len(token) > 2]
+        if name_lower in message_lower or any(token in message_lower for token in tokens):
+            matched.append(record)
+
+    if not matched:
+        if "everyone" in message_lower or "all" in message_lower:
+            matched = records[: min(5, len(records))]
+        else:
+            names = [rec.get("person", {}).get("name") for rec in records if rec.get("person", {}).get("name")]
+            if not names:
+                return {
+                    "reply": "I don't have any named contacts yet. Try scanning another badge."
+                }
+            preview = "\n".join(f"- {name}" for name in names[:10])
+            if len(names) > 10:
+                preview += f"\n...and {len(names) - 10} more."
+            return {
+                "reply": "I didn't recognize that person. Here are the people I can talk about:\n" + preview
+            }
+
+    response = "\n\n".join(_format_person_response(record) for record in matched)
+    return {"reply": response}
+
+
 def _build_search_criteria(payload: SearchRequest) -> str:
     """Construct guidance for the selector agent based on provided hints."""
 
@@ -353,6 +404,51 @@ def _search_and_select(payload: SearchRequest) -> Tuple[Dict[str, Any], Optional
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     return selected_profile, rationale, search_result
+
+
+def _format_person_response(record: Dict[str, Any]) -> str:
+    person = record.get("person", {}) or {}
+    crew_outputs = record.get("crew_outputs", {}) or {}
+    summary_block = crew_outputs.get("summary_generator_task", {}) or {}
+    analyzer_block = crew_outputs.get("linkedin_profile_analyzer_task", {}) or {}
+    extracted = record.get("extracted", {}) or {}
+    links = extracted.get("links", {}) or {}
+
+    name = person.get("name") or "This contact"
+    summary = summary_block.get("summary")
+    key_highlights = summary_block.get("key_highlights", []) or []
+    analyzer_highlights = analyzer_block.get("highlights", []) or []
+
+    lines: List[str] = []
+    header = name
+    if person.get("subtitle"):
+        header += f" — {person['subtitle']}"
+    elif analyzer_block.get("headline"):
+        header += f" — {analyzer_block['headline']}"
+    lines.append(header)
+
+    if summary:
+        lines.append(summary)
+
+    combined_highlights = key_highlights[:3]
+    if not combined_highlights:
+        combined_highlights = analyzer_highlights[:3]
+
+    if combined_highlights:
+        lines.append("Key highlights:")
+        lines.extend(f"- {item}" for item in combined_highlights)
+
+    contact_parts = []
+    if links.get("linkedin"):
+        contact_parts.append(f"LinkedIn: {links['linkedin']}")
+    if links.get("email"):
+        contact_parts.append(f"Email: {links['email']}")
+    if links.get("phone"):
+        contact_parts.append(f"Phone: {links['phone']}")
+    if contact_parts:
+        lines.append("Contact: " + "; ".join(contact_parts))
+
+    return "\n".join(lines)
 
 
 def _normalize_linkedin_profile_url(url: str) -> str:

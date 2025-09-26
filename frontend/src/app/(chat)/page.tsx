@@ -5,20 +5,11 @@ import { Sidebar } from "../../components/sidebar";
 import { ChatPane } from "../../components/chat-pane";
 import { CaptureButton } from "../../components/capture-button";
 import { PersonListItem, PersonDetail, ChatMessage } from "../../types";
-import messagesData from "../../data/messages.json";
-import { fetchPeople } from "../../lib/api";
-
-type MessageThread = {
-  threadId: string;
-  messages: ChatMessage[];
-};
-
-const initialThreads = messagesData as MessageThread[];
-const initialMessages = initialThreads[0]?.messages ?? [];
+import { fetchPeople, sendChatMessage } from "../../lib/api";
 
 export default function Home() {
   const [people, setPeople] = useState<PersonListItem[]>([]);
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const loadPeople = useCallback(async () => {
     try {
@@ -57,7 +48,7 @@ export default function Home() {
     [loadPeople, mapDetailToListItem]
   );
 
-  const handleSendMessage = useCallback((text: string) => {
+  const handleSendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
@@ -68,15 +59,26 @@ export default function Home() {
       text: trimmed,
       ts: Math.floor(now / 1000),
     };
+    setMessages((prev) => [...prev, userMessage]);
 
-    const assistantMessage: ChatMessage = {
-      id: `m_${now + 1}`,
-      sender: "assistant",
-      text: "(mock) I would answer using scanned data.",
-      ts: Math.floor(now / 1000) + 1,
-    };
-
-    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+    try {
+      const { reply } = await sendChatMessage(trimmed);
+      const assistantMessage: ChatMessage = {
+        id: `m_${now + 1}`,
+        sender: "assistant",
+        text: reply,
+        ts: Math.floor(now / 1000) + 1,
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      const assistantMessage: ChatMessage = {
+        id: `m_${now + 1}`,
+        sender: "assistant",
+        text: `I couldn't get that info because of an error: ${error}`,
+        ts: Math.floor(now / 1000) + 1,
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+    }
   }, []);
 
   return (

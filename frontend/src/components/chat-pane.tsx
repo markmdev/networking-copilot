@@ -10,7 +10,7 @@ import { useState, useEffect, useRef } from 'react';
 
 interface ChatPaneProps {
   messages: ChatMessage[];
-  onSendMessage: (text: string) => void;
+  onSendMessage: (text: string) => Promise<void>;
 }
 
 export function ChatPane({ messages, onSendMessage }: ChatPaneProps) {
@@ -23,17 +23,18 @@ export function ChatPane({ messages, onSendMessage }: ChatPaneProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = () => {
-    if (input.trim()) {
-      onSendMessage(input.trim());
+  const handleSend = async () => {
+    const trimmed = input.trim();
+    if (trimmed) {
       setInput('');
+      await onSendMessage(trimmed);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      void handleSend();
     }
   };
 
@@ -57,7 +58,7 @@ export function ChatPane({ messages, onSendMessage }: ChatPaneProps) {
             className="resize-none min-h-[40px] max-h-[120px]"
             rows={1}
           />
-          <Button onClick={handleSend} size="sm" className="self-end">
+          <Button onClick={() => void handleSend()} size="sm" className="self-end">
             <Send className="w-4 h-4" />
           </Button>
         </div>

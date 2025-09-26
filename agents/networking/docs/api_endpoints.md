@@ -375,3 +375,24 @@ Fetch the full saved record for a given person id (as returned by `/extract-and-
 
 **Error codes**
 - `404` – unknown `person_id`
+
+## POST /chat
+
+Send a user message and receive a reply generated from the stored people data. The backend matches names against
+saved profiles and composes answers from their summaries, highlights, and contact information.
+
+**Request**
+```json
+{
+  "message": "Tell me about Tony Kipkemboi"
+}
+```
+
+**Response** `200 OK`
+```json
+{
+  "reply": "Tony Kipkemboi — AI agents are the next wave of software and I’m helping builders and businesses create\nKey highlights:\n- ..."
+}
+```
+
+If the name is not recognized, the reply will list known contacts so the user can refine their question.

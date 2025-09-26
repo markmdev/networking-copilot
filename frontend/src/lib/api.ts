@@ -35,3 +35,15 @@ export async function uploadExtractAndLookup(file: Blob): Promise<PersonDetail> 
 
   return handleResponse<PersonDetail>(res);
 }
+
+export async function sendChatMessage(message: string): Promise<{ reply: string }> {
+  const res = await fetch(new URL("/chat", API_BASE_URL).toString(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ message }),
+  });
+
+  return handleResponse<{ reply: string }>(res);
+}

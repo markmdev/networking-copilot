@@ -16,8 +16,13 @@ export function CaptureModal({ isOpen, onClose, onCapture, isProcessing = false 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const startingRef = useRef(false);
 
   const startCamera = useCallback(async () => {
+    if (startingRef.current || stream) {
+      return;
+    }
+    startingRef.current = true;
     setIsLoading(true);
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -44,7 +49,8 @@ export function CaptureModal({ isOpen, onClose, onCapture, isProcessing = false 
       alert('Could not access camera. Please check permissions.');
     }
     setIsLoading(false);
-  }, []);
+    startingRef.current = false;
+  }, [stream]);
 
   const stopCamera = useCallback(() => {
     if (stream) {
@@ -56,6 +62,7 @@ export function CaptureModal({ isOpen, onClose, onCapture, isProcessing = false 
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    startingRef.current = false;
   }, [stream]);
 
   useEffect(() => {
