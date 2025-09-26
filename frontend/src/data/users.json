@@ -1,0 +1,26 @@
+[
+  {
+    "id": "u_1",
+    "name": "Aisha Patel",
+    "role": "Senior PM",
+    "company": "Nimbus Labs",
+    "email": "aisha@nimbuslabs.io",
+    "phone": "+1 (415) 555-0134",
+    "linkedin": "linkedin.com/in/aishapatel",
+    "avatarUrl": "",
+    "summary": "Product leader focused on B2B SaaS analytics.",
+    "tags": ["B2B", "SaaS", "Analytics"]
+  },
+  {
+    "id": "u_2",
+    "name": "Diego Ramos",
+    "role": "ML Engineer",
+    "company": "VectorPoint",
+    "email": "diego@vectorpoint.ai",
+    "phone": "+1 (408) 555-0192",
+    "linkedin": "linkedin.com/in/diegoramos",
+    "avatarUrl": "",
+    "summary": "Works on retrieval and evals for LLM systems.",
+    "tags": ["LLM", "RAG", "Infra"]
+  }
+]
