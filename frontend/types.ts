@@ -9,6 +9,15 @@ export type Person = {
   avatarUrl?: string;
   summary: string;
   tags: string[];
+  // AI analysis data from backend
+  aiAnalysis?: {
+    highlights: string[];
+    icebreakers: Array<{
+      category: 'professional' | 'educational' | 'industry' | 'interest' | 'personal';
+      prompt: string;
+    }>;
+    selectorRationale?: string;
+  };
 };
 
 export type ChatMessage = {
