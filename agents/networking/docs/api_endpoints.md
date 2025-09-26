@@ -14,6 +14,7 @@ This document describes the HTTP endpoints exposed by the Networking Copilot bac
   - `BRIGHTDATA_SEARCH_DATASET_ID` (people search dataset `gd_m8d03he47z8nwb5xc`)
   - `OPENAI_API_KEY` and `MODEL` for CrewAI agents
   - `VISION_AGENT_API_KEY` for document parsing (`agentic_doc`)
+  - `REDIS_URL` (optional, defaults to `redis://localhost:6379/0`) for 24-hour lookup caching
 
 All endpoints return standard FastAPI error payloads on failures, e.g. `{ "detail": "message" }` with appropriate HTTP status codes.
 
