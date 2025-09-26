@@ -13,6 +13,7 @@ This document describes the HTTP endpoints exposed by the Networking Copilot bac
   - `BRIGHTDATA_DATASET_ID` (profile snapshot dataset `gd_l1viktl72bvl7bjuj0`)
   - `BRIGHTDATA_SEARCH_DATASET_ID` (people search dataset `gd_m8d03he47z8nwb5xc`)
   - `OPENAI_API_KEY` and `MODEL` for CrewAI agents
+  - `VISION_AGENT_API_KEY` for document parsing (`agentic_doc`)
 
 All endpoints return standard FastAPI error payloads on failures, e.g. `{ "detail": "message" }` with appropriate HTTP status codes.
 
@@ -236,3 +237,46 @@ The `detail` field in error responses contains a human-readable message for disp
 - If Bright Data returns localized profile URLs (e.g., `ke.linkedin.com`), the backend normalizes them to `www.linkedin.com` before fetching the full profile.
 
 For further questions or new endpoint requirements, coordinate with the backend team to keep this document up-to-date.
+## POST /extract-image
+
+Parse an uploaded badge or business-card image and extract structured contact details. Internally this uses
+`agentic_doc` with `VISION_AGENT_API_KEY` and an OpenAI model to normalize the output.
+
+**Request**: multipart/form-data with a single `file` field (image/jpeg, image/png, etc.).
+
+```
+POST /extract-image
+Content-Type: multipart/form-data
+
+file=@badge.jpg
+```
+
+**Response** `200 OK`
+```json
+{
+  "filename": "badge.jpg",
+  "extracted": {
+    "basic_info": {
+      "names": "Jane Doe",
+      "company": "Example Corp"
+    },
+    "links": {
+      "linkedin": "https://www.linkedin.com/in/janedoe",
+      "github": null,
+      "website": "https://janedoe.com",
+      "email": "jane@example.com",
+      "phone": "+1 (555) 555-1234"
+    },
+    "image": "badge.jpg"
+  },
+  "markdown": "...raw markdown extracted from the image..."
+}
+```
+
+**Error codes**
+- `415` – unsupported content type (not an image)
+- `422` – missing filename
+- `500` – parsing or extraction failure
+
+UI can display `extracted` as the structured payload and optionally show the `markdown` as a preview of the OCR
+results.

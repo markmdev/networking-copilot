@@ -1866,6 +1866,7 @@ dependencies = [
     { name = "crewai", extra = ["tools"] },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "openai" },
     { name = "pyyaml" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -1875,6 +1876,7 @@ requires-dist = [
     { name = "crewai", extras = ["tools"], specifier = ">=0.177.0,<1.0.0" },
     { name = "fastapi", specifier = ">=0.115.0,<1.0.0" },
     { name = "httpx", specifier = ">=0.27.0,<1.0.0" },
+    { name = "openai", specifier = ">=1.48.0,<2.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0,<7.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.0,<1.0.0" },
 ]

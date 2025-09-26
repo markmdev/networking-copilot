@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse, urlunparse
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from pydantic import AnyHttpUrl, BaseModel, Field
 
 from networking.clients import (
@@ -14,6 +17,7 @@ from networking.clients import (
     LinkedInSearchClient,
 )
 from networking.execution import run_networking_crew, select_profile
+from networking.image_extractor import extract_from_image
 
 
 app = FastAPI(title="Networking Copilot API", version="0.1.0")
@@ -154,6 +158,38 @@ def search_and_enrich(payload: SearchRequest) -> Dict[str, Any]:
         "person": person,
         "selector_rationale": rationale,
         "crew_outputs": crew_outputs,
+    }
+
+
+@app.post("/extract-image")
+async def extract_image(file: UploadFile = File(...)) -> Dict[str, Any]:
+    """Extract structured data from an uploaded badge/business card image."""
+
+    if not file.filename:
+        raise HTTPException(status_code=422, detail="Filename is required")
+
+    suffix = Path(file.filename).suffix or ".png"
+    if file.content_type and not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=415, detail="Only image uploads are supported")
+
+    tmp_path = None
+    try:
+        with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            contents = await file.read()
+            tmp.write(contents)
+            tmp_path = tmp.name
+
+        extracted, markdown = extract_from_image(tmp_path)
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+    return {
+        "filename": file.filename,
+        "extracted": extracted,
+        "markdown": markdown,
     }
 
 
