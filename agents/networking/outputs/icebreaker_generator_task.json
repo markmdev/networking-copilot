@@ -2,23 +2,23 @@
   "icebreakers": [
     {
       "category": "professional",
-      "prompt": "Tony, as someone working at the forefront of AI with crewAI, what are some key trends you're observing in the field of AI agents that businesses should be aware of?"
+      "prompt": "Tony, your work with crewAI seems quite innovative! What inspired you to dive into AI agents, and what do you see as the next big development in this field?"
     },
     {
       "category": "educational",
-      "prompt": "Having studied at the University of Pennsylvania, how did your academic experiences there shape your approach to AI and technology?"
-    },
-    {
-      "category": "interest",
-      "prompt": "With your publication on resilience, I'd love to hear your thoughts on how resilience plays a role in navigating challenges in the tech industry."
+      "prompt": "With your degree from the University of Pennsylvania and coursework in Data Structures and Algorithms, what has been the most impactful lesson that has influenced your professional journey?"
     },
     {
       "category": "industry",
-      "prompt": "Based on your involvement with Black in AI and NSBE, how do you see the importance of diversity impacting the evolution of the AI industry?"
+      "prompt": "I've noticed you've been sharing insights on the dynamic nature of AI products. How do you keep up with the rapid changes in the AI industry, and what trends are currently capturing your attention?"
+    },
+    {
+      "category": "interest",
+      "prompt": "As a former NCAA athlete, how have the skills and mindset from your athletic experiences influenced your approach in the tech and AI world?"
     },
     {
       "category": "personal",
-      "prompt": "As a former NCAA student-athlete, do you find any parallels between the mindset required for athletics and your current work in AI development?"
+      "prompt": "You've been involved in volunteer work with the Rare Cancer Research Program. Can you share how this experience has impacted you personally and professionally?"
     }
   ]
 }
