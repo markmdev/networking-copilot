@@ -21,6 +21,7 @@ All endpoints return standard FastAPI error payloads on failures, e.g. `{ "detai
 Simple readiness probe.
 
 **Response** `200 OK`
+
 ```json
 { "status": "ok" }
 ```
@@ -30,16 +31,18 @@ Simple readiness probe.
 Search LinkedIn via Bright Data, select the best matching candidate, and return lightweight profile info plus the selector’s rationale. Useful when the UI needs to display options before running the full crew.
 
 **Request body**
+
 ```json
 {
   "first_name": "Tony",
   "last_name": "Kipkemboi",
-  "additional_context": "Tech PM in San Francisco",   // optional
-  "linkedin_url": "https://www.linkedin.com"          // optional override of search site
+  "additional_context": "Tech PM in San Francisco", // optional
+  "linkedin_url": "https://www.linkedin.com" // optional override of search site
 }
 ```
 
 **Response** `200 OK`
+
 ```json
 {
   "selected_profile": {
@@ -56,6 +59,7 @@ Search LinkedIn via Bright Data, select the best matching candidate, and return 
 ```
 
 **Error codes**
+
 - `404` – no candidates returned for the given name
 - `502` – Bright Data errors or selector failure
 
@@ -65,7 +69,16 @@ End-to-end flow: search, select best match, fetch full LinkedIn profile snapshot
 
 **Request body**: same as `/search`.
 
+```json
+{
+  "first_name": "Tony",
+  "last_name": "Kipkemboi",
+  "additional_context": "Tech PM in San Francisco" // optional
+}
+```
+
 **Response** `200 OK`
+
 ```json
 {
   "person": {
@@ -85,9 +98,7 @@ End-to-end flow: search, select best match, fetch full LinkedIn profile snapshot
       "current_title": "Product Manager",
       "current_company": "Example",
       "location": "San Francisco Bay Area",
-      "highlights": [
-        "Exactly 10 bullet points summarizing the profile"
-      ]
+      "highlights": ["Exactly 10 bullet points summarizing the profile"]
     },
     "summary_generator_task": {
       "summary": "Two-sentence professional summary.",
@@ -105,6 +116,7 @@ End-to-end flow: search, select best match, fetch full LinkedIn profile snapshot
 ```
 
 **Error codes**
+
 - Same as `/search`
 - `502` – Bright Data profile fetch failure
 - `500` – Crew execution error
@@ -114,11 +126,13 @@ End-to-end flow: search, select best match, fetch full LinkedIn profile snapshot
 Fetch a single LinkedIn profile snapshot via Bright Data. Useful when the UI already knows the profile URL.
 
 **Request body**
+
 ```json
 { "url": "https://www.linkedin.com/in/example" }
 ```
 
 **Response** `200 OK`
+
 ```json
 {
   "snapshot_id": "sd_xxx",
@@ -151,6 +165,7 @@ Fetch a single LinkedIn profile snapshot via Bright Data. Useful when the UI alr
 ```
 
 **Error codes**
+
 - `422` – invalid URL format
 - `502` – Bright Data error
 
@@ -159,6 +174,7 @@ Fetch a single LinkedIn profile snapshot via Bright Data. Useful when the UI alr
 Kick off the Networking crew directly with a LinkedIn profile payload (e.g., cached snapshot). This bypasses Bright Data calls and is useful for testing or batch runs.
 
 **Request body**
+
 ```json
 {
   "linkedin_data": {
@@ -169,9 +185,11 @@ Kick off the Networking crew directly with a LinkedIn profile payload (e.g., cac
   }
 }
 ```
+
 You may also send an array of profile objects; the crew will use the first entry.
 
 **Response** `200 OK`
+
 ```json
 {
   "linkedin_profile_analyzer_task": { ... },
@@ -181,6 +199,7 @@ You may also send an array of profile objects; the crew will use the first entry
 ```
 
 **Error codes**
+
 - `422` – missing or invalid payload
 - `500` – crew execution error
 
@@ -196,13 +215,16 @@ The `detail` field in error responses contains a human-readable message for disp
 ## Example Integrations
 
 ### Search then Lookup Flow
+
 1. UI calls `/search` to get the best candidate and show confirmation to the user.
 2. After confirmation, UI calls `/lookup` to fetch the full profile insights and display analyzer/summary/icebreaker results.
 
 ### Direct Lookup Flow
+
 - If the UI already has enough context, call `/lookup` directly. The response includes both the core person card (`person`) and conversation-ready content under `crew_outputs`.
 
 ### Direct Profile Fetch
+
 - To display raw LinkedIn data without crew processing, call `/linkedin` and use the first entry in `records`.
 
 ## Notes for UI Developers
