@@ -6,7 +6,7 @@ import { Textarea } from './ui/textarea';
 import { ChatMessage } from '../types';
 import { MessageBubble } from './message-bubble';
 import { Send } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface ChatPaneProps {
   messages: ChatMessage[];
@@ -15,6 +15,13 @@ interface ChatPaneProps {
 
 export function ChatPane({ messages, onSendMessage }: ChatPaneProps) {
   const [input, setInput] = useState('');
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages are added
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSend = () => {
     if (input.trim()) {
@@ -31,12 +38,13 @@ export function ChatPane({ messages, onSendMessage }: ChatPaneProps) {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full">
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-1">
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+        <div className="space-y-1 min-w-0">
           {messages.map((message) => (
             <MessageBubble key={message.id} message={message} />
           ))}
+          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
       <div className="border-t p-4">
