@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { Sidebar } from '../../components/sidebar';
-import { ChatPane } from '../../components/chat-pane';
-import { CaptureButton } from '../../components/capture-button';
-import { PersonListItem, PersonDetail, ChatMessage } from '../../types';
-import messagesData from '../../data/messages.json';
-import { fetchPeople } from '../../lib/api';
+import { useCallback, useEffect, useState } from "react";
+import { Sidebar } from "../../components/sidebar";
+import { ChatPane } from "../../components/chat-pane";
+import { CaptureButton } from "../../components/capture-button";
+import { PersonListItem, PersonDetail, ChatMessage } from "../../types";
+import messagesData from "../../data/messages.json";
+import { fetchPeople } from "../../lib/api";
 
 type MessageThread = {
   threadId: string;
@@ -19,12 +19,13 @@ const initialMessages = initialThreads[0]?.messages ?? [];
 export default function Home() {
   const [people, setPeople] = useState<PersonListItem[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+
   const loadPeople = useCallback(async () => {
     try {
       const data = await fetchPeople();
       setPeople(data);
     } catch (error) {
-      console.error('Failed to load people', error);
+      console.error("Failed to load people", error);
     }
   }, []);
 
@@ -32,40 +33,51 @@ export default function Home() {
     loadPeople();
   }, [loadPeople]);
 
-  const mapDetailToListItem = (record: PersonDetail): PersonListItem => ({
-    id: record.id,
-    name: record.person.name,
-    subtitle: record.person.subtitle ?? record.person.experience ?? undefined,
-    location: record.person.location ?? undefined,
-    avatar: record.person.avatar ?? undefined,
-    created_at: record.created_at,
-  });
+  const mapDetailToListItem = useCallback(
+    (record: PersonDetail): PersonListItem => ({
+      id: record.id,
+      name: record.person.name,
+      subtitle: record.person.subtitle ?? record.person.experience ?? undefined,
+      location: record.person.location ?? undefined,
+      avatar: record.person.avatar ?? undefined,
+      created_at: record.created_at,
+    }),
+    []
+  );
 
-  const handleCapture = (record: PersonDetail) => {
-    setPeople(prev => {
-      const next = prev.filter(p => p.id !== record.id);
-      return [mapDetailToListItem(record), ...next];
-    });
-    loadPeople();
-  };
+  const handleCapture = useCallback(
+    (record: PersonDetail) => {
+      setPeople((prev) => {
+        const next = prev.filter((p) => p.id !== record.id);
+        return [mapDetailToListItem(record), ...next];
+      });
+      // Refresh list to keep order consistent with backend index
+      loadPeople();
+    },
+    [loadPeople, mapDetailToListItem]
+  );
 
-  const handleSendMessage = (text: string) => {
+  const handleSendMessage = useCallback((text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    const now = Date.now();
     const userMessage: ChatMessage = {
-      id: `m_${Date.now()}`,
-      sender: 'user',
-      text,
-      ts: Math.floor(Date.now() / 1000)
+      id: `m_${now}`,
+      sender: "user",
+      text: trimmed,
+      ts: Math.floor(now / 1000),
     };
 
     const assistantMessage: ChatMessage = {
-      id: `m_${Date.now() + 1}`,
-      sender: 'assistant',
-      text: '(mock) I would answer using scanned data.',
-      ts: Math.floor(Date.now() / 1000) + 1
+      id: `m_${now + 1}`,
+      sender: "assistant",
+      text: "(mock) I would answer using scanned data.",
+      ts: Math.floor(now / 1000) + 1,
     };
 
-    setMessages(prev => [...prev, userMessage, assistantMessage]);
-  };
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+  }, []);
 
   return (
     <div className="flex h-screen">
