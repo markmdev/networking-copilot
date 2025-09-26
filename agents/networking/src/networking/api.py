@@ -206,7 +206,7 @@ async def extract_image(file: UploadFile = File(...)) -> Dict[str, Any]:
 async def extract_and_lookup(file: UploadFile = File(...)) -> Dict[str, Any]:
     """Extract info from an image, then run lookup on the parsed person."""
 
-extraction = await extract_image(file)  # type: ignore[arg-type]
+    extraction = await extract_image(file)  # type: ignore[arg-type]
     extracted = extraction["extracted"]
 
     basic_info = extracted.get("basic_info", {}) if isinstance(extracted, dict) else {}
