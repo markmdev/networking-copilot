@@ -1,19 +1,52 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Sidebar } from '../../components/sidebar';
 import { ChatPane } from '../../components/chat-pane';
 import { CaptureButton } from '../../components/capture-button';
-import { Person, ChatMessage } from '../../types';
-import usersData from '../../data/users.json';
+import { PersonListItem, PersonDetail, ChatMessage } from '../../types';
 import messagesData from '../../data/messages.json';
+import { fetchPeople } from '../../lib/api';
+
+type MessageThread = {
+  threadId: string;
+  messages: ChatMessage[];
+};
+
+const initialThreads = messagesData as MessageThread[];
+const initialMessages = initialThreads[0]?.messages ?? [];
 
 export default function Home() {
-  const [people, setPeople] = useState<Person[]>(usersData as Person[]);
-  const [messages, setMessages] = useState<ChatMessage[]>((messagesData as any)[0].messages as ChatMessage[]);
+  const [people, setPeople] = useState<PersonListItem[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const loadPeople = useCallback(async () => {
+    try {
+      const data = await fetchPeople();
+      setPeople(data);
+    } catch (error) {
+      console.error('Failed to load people', error);
+    }
+  }, []);
 
-  const handleCapture = (newPerson: Person) => {
-    setPeople(prev => [newPerson, ...prev]);
+  useEffect(() => {
+    loadPeople();
+  }, [loadPeople]);
+
+  const mapDetailToListItem = (record: PersonDetail): PersonListItem => ({
+    id: record.id,
+    name: record.person.name,
+    subtitle: record.person.subtitle ?? record.person.experience ?? undefined,
+    location: record.person.location ?? undefined,
+    avatar: record.person.avatar ?? undefined,
+    created_at: record.created_at,
+  });
+
+  const handleCapture = (record: PersonDetail) => {
+    setPeople(prev => {
+      const next = prev.filter(p => p.id !== record.id);
+      return [mapDetailToListItem(record), ...next];
+    });
+    loadPeople();
   };
 
   const handleSendMessage = (text: string) => {

@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse, urlunparse
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import AnyHttpUrl, BaseModel, Field
 
 from networking.clients import (
@@ -16,12 +17,31 @@ from networking.clients import (
     LinkedInFetcher,
     LinkedInSearchClient,
 )
-from networking.cache import get_cached_lookup, set_cached_lookup
+from networking.cache import (
+    get_cached_lookup,
+    set_cached_lookup,
+    save_person_record,
+    list_person_records,
+    get_person_record,
+)
 from networking.execution import run_networking_crew, select_profile
 from networking.image_extractor import extract_from_image
 
 
 app = FastAPI(title="Networking Copilot API", version="0.1.0")
+
+allow_origins = os.getenv("CORS_ALLOW_ORIGINS", "*").split(",")
+allow_origins = [origin.strip() for origin in allow_origins if origin.strip()]
+if not allow_origins:
+    allow_origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class CrewRequest(BaseModel):
@@ -245,7 +265,43 @@ async def extract_and_lookup(file: UploadFile = File(...)) -> Dict[str, Any]:
         "extracted": extracted,
     }
     combined.update(lookup_result)
-    return combined
+
+    stored = save_person_record(combined)
+    return stored
+
+
+@app.get("/people")
+def list_people(limit: int = 50) -> Dict[str, Any]:
+    """Return saved people summaries for the sidebar."""
+
+    limit = max(1, min(limit, 200))
+    records = list_person_records(limit)
+
+    people = []
+    for record in records:
+        person = record.get("person", {}) if isinstance(record, dict) else {}
+        people.append(
+            {
+                "id": record.get("id"),
+                "name": person.get("name"),
+                "subtitle": person.get("subtitle"),
+                "location": person.get("location"),
+                "avatar": person.get("avatar"),
+                "created_at": record.get("created_at"),
+            }
+        )
+
+    return {"people": people}
+
+
+@app.get("/people/{person_id}")
+def get_person(person_id: str) -> Dict[str, Any]:
+    """Return the full saved record for a given person."""
+
+    record = get_person_record(person_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Person not found")
+    return record
 
 
 def _build_search_criteria(payload: SearchRequest) -> str:

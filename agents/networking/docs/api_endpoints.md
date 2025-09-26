@@ -15,6 +15,7 @@ This document describes the HTTP endpoints exposed by the Networking Copilot bac
   - `OPENAI_API_KEY` and `MODEL` for CrewAI agents
   - `VISION_AGENT_API_KEY` for document parsing (`agentic_doc`)
   - `REDIS_URL` (optional, defaults to `redis://localhost:6379/0`) for 24-hour lookup caching
+  - `CORS_ALLOW_ORIGINS` (comma-separated, default `*`) to permit frontend origins such as `http://localhost:3000`
 
 All endpoints return standard FastAPI error payloads on failures, e.g. `{ "detail": "message" }` with appropriate HTTP status codes.
 
@@ -292,8 +293,24 @@ Response mirrors `/lookup` and includes the OCR metadata.
 **Response** `200 OK`
 ```json
 {
+  "id": "1f6c9c8f-3c7a-49ae-9c66-0da6785df309",
+  "created_at": "2025-09-26T21:12:34.567Z",
   "filename": "badge.jpg",
   "markdown": "...OCR markdown...",
+  "extracted": {
+    "basic_info": {
+      "names": "Example Person",
+      "company": "Example Corp"
+    },
+    "links": {
+      "linkedin": "https://www.linkedin.com/in/example",
+      "github": null,
+      "website": null,
+      "email": "example@example.com",
+      "phone": null
+    },
+    "image": "badge.jpg"
+  },
   "person": {
     "url": "https://www.linkedin.com/in/example",
     "name": "Example Person",
@@ -314,3 +331,47 @@ Response mirrors `/lookup` and includes the OCR metadata.
 
 Errors follow the combined rules of `/extract-image`, `/search`, and `/lookup` (e.g., 422 for missing file, 502 for Bright
 Data issues, 500 for extraction or crew failures).
+
+## GET /people
+
+Return the saved people (from previous `/extract-and-lookup` runs) for rendering in the sidebar.
+
+**Query parameters**
+- `limit` (optional, default 50, max 200) – number of records to return, newest first
+
+**Response** `200 OK`
+```json
+{
+  "people": [
+    {
+      "id": "1f6c9c8f-3c7a-49ae-9c66-0da6785df309",
+      "name": "Example Person",
+      "subtitle": "Product Manager at Example",
+      "location": "San Francisco Bay Area",
+      "avatar": "https://...",
+      "created_at": "2025-09-26T21:12:34.567Z"
+    }
+  ]
+}
+```
+
+## GET /people/{person_id}
+
+Fetch the full saved record for a given person id (as returned by `/extract-and-lookup`).
+
+**Response** `200 OK`
+```json
+{
+  "id": "1f6c9c8f-3c7a-49ae-9c66-0da6785df309",
+  "created_at": "2025-09-26T21:12:34.567Z",
+  "filename": "badge.jpg",
+  "markdown": "...",
+  "extracted": { ... },
+  "person": { ... },
+  "selector_rationale": "...",
+  "crew_outputs": { ... }
+}
+```
+
+**Error codes**
+- `404` – unknown `person_id`

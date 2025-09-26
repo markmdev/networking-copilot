@@ -8,7 +8,7 @@ import { CaptureModal } from './capture-modal';
 import { networkingAPI } from '../lib/api';
 
 interface CaptureButtonProps {
-  onCapture: (person: Person) => void;
+  onCapture: (record: PersonDetail) => void;
 }
 
 export function CaptureButton({ onCapture }: CaptureButtonProps) {
@@ -133,6 +133,7 @@ export function CaptureButton({ onCapture }: CaptureButtonProps) {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onCapture={handleImageCapture}
+        isProcessing={isUploading}
       />
     </>
   );

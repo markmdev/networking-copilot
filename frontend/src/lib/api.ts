@@ -1,6 +1,4 @@
-/**
- * Backend API client for Networking Copilot
- */
+import { PersonDetail, PersonListItem } from "../types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
@@ -50,18 +48,18 @@ export interface CrewOutputs {
   };
 }
 
-export interface ExtractAndLookupResponse {
-  filename: string;
-  markdown: string;
-  person: ProfileData;
-  selector_rationale: string;
-  crew_outputs: CrewOutputs;
+export async function fetchPeople(limit = 50): Promise<PersonListItem[]> {
+  const url = new URL("/people", API_BASE_URL);
+  url.searchParams.set("limit", String(limit));
+  const res = await fetch(url.toString(), { cache: "no-store" });
+  const data = await handleResponse<{ people: PersonListItem[] }>(res);
+  return data.people ?? [];
 }
 
-export interface ExtractImageResponse {
-  filename: string;
-  extracted: ExtractedData;
-  markdown: string;
+export async function fetchPerson(id: string): Promise<PersonDetail> {
+  const url = new URL(`/people/${id}`, API_BASE_URL);
+  const res = await fetch(url.toString(), { cache: "no-store" });
+  return handleResponse<PersonDetail>(res);
 }
 
 class NetworkingAPI {
@@ -206,4 +204,5 @@ class NetworkingAPI {
   }
 }
 
-export const networkingAPI = new NetworkingAPI();
+  return handleResponse<PersonDetail>(res);
+}

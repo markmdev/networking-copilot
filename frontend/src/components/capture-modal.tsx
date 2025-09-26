@@ -3,7 +3,7 @@
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface CaptureModalProps {
   isOpen: boolean;
@@ -11,36 +11,13 @@ interface CaptureModalProps {
   onCapture: (imageFile: File) => void;
 }
 
-export function CaptureModal({ isOpen, onClose, onCapture }: CaptureModalProps) {
+export function CaptureModal({ isOpen, onClose, onCapture, isProcessing = false }: CaptureModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      console.log('Modal opened, starting camera');
-      startCamera();
-    } else {
-      console.log('Modal closed, stopping camera');
-      stopCamera();
-    }
-
-    return () => {
-      console.log('Component unmounting, stopping camera');
-      stopCamera();
-    };
-  }, [isOpen]);
-
-  // Separate effect to handle setting the video source when both video ref and stream are ready
-  useEffect(() => {
-    if (videoRef.current && stream) {
-      console.log('Setting video srcObject in useEffect');
-      videoRef.current.srcObject = stream;
-    }
-  }, [stream]);
-
-  const startCamera = async () => {
+  const startCamera = useCallback(async () => {
     setIsLoading(true);
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -51,28 +28,15 @@ export function CaptureModal({ isOpen, onClose, onCapture }: CaptureModalProps) 
         },
         audio: false
       });
-      console.log('MediaStream obtained:', mediaStream);
-      console.log('Video tracks:', mediaStream.getVideoTracks());
       
       setStream(mediaStream);
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        console.log('Video srcObject set');
         
         // Wait for the video to be ready
         videoRef.current.onloadedmetadata = () => {
-          console.log('Video metadata loaded, attempting to play');
-          console.log('Video dimensions:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
           videoRef.current?.play().catch(e => console.error('Play failed:', e));
-        };
-        
-        videoRef.current.oncanplay = () => {
-          console.log('Video can play');
-        };
-        
-        videoRef.current.onplaying = () => {
-          console.log('Video is playing');
         };
       }
     } catch (error) {
@@ -80,13 +44,11 @@ export function CaptureModal({ isOpen, onClose, onCapture }: CaptureModalProps) 
       alert('Could not access camera. Please check permissions.');
     }
     setIsLoading(false);
-  };
+  }, []);
 
-  const stopCamera = () => {
-    console.log('Stopping camera...');
+  const stopCamera = useCallback(() => {
     if (stream) {
       stream.getTracks().forEach(track => {
-        console.log('Stopping track:', track.kind, track.label);
         track.stop();
       });
       setStream(null);
@@ -94,10 +56,28 @@ export function CaptureModal({ isOpen, onClose, onCapture }: CaptureModalProps) 
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-  };
+  }, [stream]);
+
+  useEffect(() => {
+    if (isOpen) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+
+    return () => {
+      stopCamera();
+    };
+  }, [isOpen, startCamera, stopCamera]);
+
+  // Separate effect to handle setting the video source when both video ref and stream are ready
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
 
   const handleClose = () => {
-    console.log('Handle close called');
     stopCamera();
     onClose();
   };
@@ -119,9 +99,9 @@ export function CaptureModal({ isOpen, onClose, onCapture }: CaptureModalProps) 
 
       ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      canvas.toBlob((blob) => {
+      canvas.toBlob(async (blob) => {
         if (blob) {
-          console.log('📦 Blob created:', { size: blob.size, type: blob.type });
+console.log('📦 Blob created:', { size: blob.size, type: blob.type });
           
           // Convert blob to File with proper metadata
           const timestamp = Date.now();
@@ -186,8 +166,8 @@ export function CaptureModal({ isOpen, onClose, onCapture }: CaptureModalProps) 
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={handleTakePicture} className="flex-1" disabled={!stream || isLoading}>
-                Take Picture
+              <Button onClick={handleTakePicture} className="flex-1" disabled={!stream || isLoading || isProcessing}>
+                {isProcessing ? 'Processing...' : 'Take Picture'}
               </Button>
               <Button variant="outline" onClick={handleClose}>
                 Cancel
