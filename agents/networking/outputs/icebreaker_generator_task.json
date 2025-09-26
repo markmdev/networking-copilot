@@ -1,0 +1,24 @@
+{
+  "icebreakers": [
+    {
+      "category": "professional",
+      "prompt": "Tony, I've noticed you're contributing to AI development at crewAI. What exciting projects are currently underway at the company that you're particularly passionate about?"
+    },
+    {
+      "category": "educational",
+      "prompt": "Your educational journey included coursework in Data Structures and Algorithms at the University of Pennsylvania. How do you feel this background has influenced your work in AI?"
+    },
+    {
+      "category": "industry",
+      "prompt": "Given your active engagement in AI and technology content on LinkedIn, how do you see the role of AI agents evolving in the next few years?"
+    },
+    {
+      "category": "interest",
+      "prompt": "As an author of an article about resilience, how do you think the concept of resilience applies to the fast-paced developments in AI technology?"
+    },
+    {
+      "category": "personal",
+      "prompt": "As a former NCAA Division I and II student-athlete, how has your experience in athletics influenced your professional career and approach to challenges?"
+    }
+  ]
+}
