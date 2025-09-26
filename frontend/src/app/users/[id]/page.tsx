@@ -12,7 +12,8 @@ interface PersonPageProps {
 export default async function PersonPage({ params }: PersonPageProps) {
   let detail;
   try {
-    detail = await fetchPerson(params.id);
+    const { id } = await params;
+    detail = await fetchPerson(id);
   } catch (error) {
     console.error("Failed to load person", error);
     notFound();
@@ -76,7 +77,12 @@ export default async function PersonPage({ params }: PersonPageProps) {
           {links?.linkedin && (
             <div>
               <span className="font-medium mr-2">LinkedIn:</span>
-              <Link href={links.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+              <Link
+                href={links.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
                 {links.linkedin}
               </Link>
             </div>
@@ -84,7 +90,9 @@ export default async function PersonPage({ params }: PersonPageProps) {
           {links?.email && (
             <div>
               <span className="font-medium mr-2">Email:</span>
-              <a href={`mailto:${links.email}`} className="text-blue-600 hover:underline">{links.email}</a>
+              <a href={`mailto:${links.email}`} className="text-blue-600 hover:underline">
+                {links.email}
+              </a>
             </div>
           )}
           {links?.phone && (
@@ -96,7 +104,12 @@ export default async function PersonPage({ params }: PersonPageProps) {
           {links?.website && (
             <div>
               <span className="font-medium mr-2">Website:</span>
-              <Link href={links.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+              <Link
+                href={links.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
                 {links.website}
               </Link>
             </div>
@@ -104,7 +117,12 @@ export default async function PersonPage({ params }: PersonPageProps) {
           {links?.github && (
             <div>
               <span className="font-medium mr-2">GitHub:</span>
-              <Link href={links.github} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+              <Link
+                href={links.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
                 {links.github}
               </Link>
             </div>
@@ -112,7 +130,6 @@ export default async function PersonPage({ params }: PersonPageProps) {
           {!links && <p>No additional contact details found.</p>}
         </CardContent>
       </Card>
-
     </div>
   );
 }
