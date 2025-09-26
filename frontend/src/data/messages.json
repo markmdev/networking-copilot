@@ -1,0 +1,25 @@
+[
+  {
+    "threadId": "default",
+    "messages": [
+      {
+        "id": "m1",
+        "sender": "system",
+        "text": "Ask about a scanned person to see their info.",
+        "ts": 1710000000
+      },
+      {
+        "id": "m2",
+        "sender": "user",
+        "text": "Summarize Aisha Patel.",
+        "ts": 1710000300
+      },
+      {
+        "id": "m3",
+        "sender": "assistant",
+        "text": "A concise summary appears here.",
+        "ts": 1710000310
+      }
+    ]
+  }
+]
