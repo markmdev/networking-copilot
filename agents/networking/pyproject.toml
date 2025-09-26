@@ -12,6 +12,7 @@ dependencies = [
     "pyyaml>=6.0.0,<7.0.0",
     "openai>=1.48.0,<2.0.0",
     "agentic-doc>=0.3.3",
+    "python-multipart>=0.0.20",
 ]
 
 [project.scripts]

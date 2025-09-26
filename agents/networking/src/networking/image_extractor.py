@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, Tuple
 
@@ -76,7 +77,12 @@ def extract_from_image(image_path: str) -> Tuple[Dict[str, Any], str]:
         temperature=0.0,
     )
 
-    content = response.choices[0].message.content or ""
+    content = (response.choices[0].message.content or "").strip()
+
+    # Remove Markdown code fences if the model included them.
+    fenced = re.fullmatch(r"```(?:json)?\s*(.*)```", content, flags=re.IGNORECASE | re.DOTALL)
+    if fenced:
+        content = fenced.group(1).strip()
 
     try:
         extracted = json.loads(content)
