@@ -2,23 +2,23 @@
   "icebreakers": [
     {
       "category": "professional",
-      "prompt": "Tony, I've noticed you're contributing to AI development at crewAI. What exciting projects are currently underway at the company that you're particularly passionate about?"
+      "prompt": "Tony, I noticed you're working at crewAI focusing on AI agents. What do you find most exciting about the current developments in AI software?"
     },
     {
       "category": "educational",
-      "prompt": "Your educational journey included coursework in Data Structures and Algorithms at the University of Pennsylvania. How do you feel this background has influenced your work in AI?"
+      "prompt": "Having attended the University of Pennsylvania, what were some experiences or courses that significantly shaped your career in AI?"
     },
     {
       "category": "industry",
-      "prompt": "Given your active engagement in AI and technology content on LinkedIn, how do you see the role of AI agents evolving in the next few years?"
+      "prompt": "You seem deeply engaged with AI advancements and marketing strategies on LinkedIn. What are some intriguing trends you're observing in the AI industry today?"
     },
     {
       "category": "interest",
-      "prompt": "As an author of an article about resilience, how do you think the concept of resilience applies to the fast-paced developments in AI technology?"
+      "prompt": "As a member of organizations like Black in AI and NSBE, how have these memberships influenced your professional journey and perspective on leadership?"
     },
     {
       "category": "personal",
-      "prompt": "As a former NCAA Division I and II student-athlete, how has your experience in athletics influenced your professional career and approach to challenges?"
+      "prompt": "Your volunteer work with the Rare Cancer Research Program is quite impressive. What motivated you to get involved in this cause, and what insights have you gained from it?"
     }
   ]
 }

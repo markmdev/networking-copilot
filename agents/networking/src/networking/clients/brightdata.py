@@ -40,7 +40,7 @@ class BrightDataDatasetClient:
     # ------------------------------------------------------------------
     def trigger_snapshot(
         self,
-        payload: List[Dict[str, Any]],
+        payload: Any,
         *,
         include_errors: bool = True,
         extra_params: Optional[Dict[str, Any]] = None,
@@ -131,7 +131,50 @@ class LinkedInFetcher(BrightDataDatasetClient):
     def fetch_profile(self, url: str) -> Dict[str, Any]:
         """Fetch structured LinkedIn data for the provided profile URL."""
 
-        snapshot_id = self.trigger_snapshot([{"url": url}])
+        payload = {
+            "input": [{"url": url}],
+            "custom_output_fields": [
+                "id",
+                "name",
+                "city",
+                "country_code",
+                "position",
+                "about",
+                "posts",
+                "current_company",
+                "experience",
+                "url",
+                "educations_details",
+                "education",
+                "avatar",
+                "courses",
+                "languages",
+                "certifications",
+                "volunteer_experience",
+                "current_company_company_id",
+                "current_company_name",
+                "publications",
+                "patents",
+                "projects",
+                "organizations",
+                "location",
+                "input_url",
+                "linkedin_id",
+                "activity",
+                "honors_and_awards",
+                "bio_links",
+                "first_name",
+                "last_name",
+                "timestamp",
+                "input",
+                "error",
+                "error_code",
+                "warning",
+                "warning_code",
+            ],
+        }
+
+        snapshot_id = self.trigger_snapshot(payload)
         progress = self.wait_for_snapshot(snapshot_id)
 
         if progress.get("status") != "ready":
