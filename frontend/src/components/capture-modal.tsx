@@ -8,8 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 interface CaptureModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCapture: (imageBlob: Blob) => void | Promise<void>;
-  isProcessing?: boolean;
+  onCapture: (imageFile: File) => void;
 }
 
 export function CaptureModal({ isOpen, onClose, onCapture, isProcessing = false }: CaptureModalProps) {
@@ -84,7 +83,11 @@ export function CaptureModal({ isOpen, onClose, onCapture, isProcessing = false 
   };
 
   const handleTakePicture = () => {
+    console.log('📸 Take picture button clicked');
+    
     if (videoRef.current && canvasRef.current) {
+      console.log('📹 Video and canvas elements available');
+      
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
@@ -92,13 +95,38 @@ export function CaptureModal({ isOpen, onClose, onCapture, isProcessing = false 
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
 
+      console.log('🎨 Canvas dimensions set:', { width: canvas.width, height: canvas.height });
+
       ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       canvas.toBlob(async (blob) => {
         if (blob) {
-          await onCapture(blob);
+console.log('📦 Blob created:', { size: blob.size, type: blob.type });
+          
+          // Convert blob to File with proper metadata
+          const timestamp = Date.now();
+          const imageFile = new File([blob], `capture-${timestamp}.jpg`, {
+            type: 'image/jpeg',
+            lastModified: timestamp
+          });
+          
+          console.log('📄 File created:', { 
+            name: imageFile.name, 
+            type: imageFile.type, 
+            size: imageFile.size 
+          });
+          
+          console.log('🚀 Calling onCapture with file...');
+          onCapture(imageFile);
+        } else {
+          console.error('❌ Failed to create blob from canvas');
         }
       }, 'image/jpeg', 0.8);
+    } else {
+      console.error('❌ Video or canvas element not available', {
+        video: !!videoRef.current,
+        canvas: !!canvasRef.current
+      });
     }
   };
 

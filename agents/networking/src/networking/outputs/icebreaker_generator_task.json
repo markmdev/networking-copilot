@@ -1,0 +1,24 @@
+{
+  "icebreakers": [
+    {
+      "category": "professional",
+      "prompt": "Ayaan, you've been a Research Assistant at UROP and a Teaching Assistant at Stanford. How do these roles complement each other and shape your career in software engineering?"
+    },
+    {
+      "category": "educational",
+      "prompt": "With your extensive experience in computer software engineering and participation in the Harvard Model United Nations, what parallels do you draw between software development and diplomatic strategy?"
+    },
+    {
+      "category": "industry",
+      "prompt": "In your experience at Kamco Invest, you worked on financial modeling and M&A. How do you see AI influencing these areas in the future?"
+    },
+    {
+      "category": "interest",
+      "prompt": "You've been involved in hackathons with notable achievements. What is the most exciting project you've worked on during these events, and what did you learn from it?"
+    },
+    {
+      "category": "personal",
+      "prompt": "As a recipient of multiple swimming medals, how has your experience as a competitive swimmer influenced your approach to challenges in both your academic and professional life?"
+    }
+  ]
+}
