@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
-from tempfile import NamedTemporaryFile
 from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse, urlunparse
 
@@ -25,7 +23,15 @@ from networking.cache import (
     get_person_record,
 )
 from networking.execution import run_networking_crew, select_profile
-from networking.image_extractor import extract_from_image
+from networking.image_extractor import extract_from_bytes
+from networking.jobs import enqueue_capture_job, get_capture_job
+from networking.services import (
+    SearchPayload,
+    generate_chat_reply,
+    process_capture,
+    search_and_enrich as service_search_and_enrich,
+    format_person_summary,
+)
 
 
 app = FastAPI(title="Networking Copilot API", version="0.1.0")
@@ -140,87 +146,50 @@ def search_profile(payload: SearchRequest) -> Dict[str, Any]:
 def search_and_enrich(payload: SearchRequest) -> Dict[str, Any]:
     """Search for a person, fetch their profile, and run the Networking crew."""
 
-    cached = get_cached_lookup(payload.first_name, payload.last_name)
-    if cached:
-        return cached
-
-    selected_profile, rationale, _ = _search_and_select(payload)
-
-    profile_url = selected_profile.get("url")
-    if not profile_url:
-        raise HTTPException(status_code=502, detail="Selected profile does not include a LinkedIn URL")
-
-    normalized_url = _normalize_linkedin_profile_url(profile_url)
+    search_payload = SearchPayload(
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+        additional_context=payload.additional_context,
+        linkedin_url=str(payload.linkedin_url),
+    )
 
     try:
-        fetcher = LinkedInFetcher()
-    except ValueError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    try:
-        snapshot = fetcher.fetch_profile(normalized_url)
-    except BrightDataError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
-
-    records = snapshot.get("records", [])
-    if not records:
-        raise HTTPException(status_code=502, detail="LinkedIn snapshot returned no profile records")
-
-    profile_data = records[0]
-
-    try:
-        crew_outputs = run_networking_crew(profile_data)
-    except Exception as exc:  # pragma: no cover - surface crew execution issues
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    person = {
-        "url": normalized_url,
-        "name": selected_profile.get("name"),
-        "subtitle": selected_profile.get("subtitle"),
-        "location": selected_profile.get("location"),
-        "experience": selected_profile.get("experience"),
-        "education": selected_profile.get("education"),
-        "avatar": selected_profile.get("avatar"),
-    }
-
-    result = {
-        "person": person,
-        "selector_rationale": rationale,
-        "crew_outputs": crew_outputs,
-    }
-
-    set_cached_lookup(payload.first_name, payload.last_name, result)
+        result = service_search_and_enrich(search_payload)
+    except RuntimeError as exc:
+        message = str(exc)
+        status = 404 if "No LinkedIn candidates" in message else 502
+        raise HTTPException(status_code=status, detail=message) from exc
 
     return result
+
+
+async def _read_upload_file(file: UploadFile) -> Tuple[str, bytes]:
+    if not file.filename:
+        raise HTTPException(status_code=422, detail="Filename is required")
+
+    if file.content_type and not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=415, detail="Only image uploads are supported")
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=422, detail="Uploaded file was empty")
+
+    return file.filename, contents
 
 
 @app.post("/extract-image")
 async def extract_image(file: UploadFile = File(...)) -> Dict[str, Any]:
     """Extract structured data from an uploaded badge/business card image."""
 
-    if not file.filename:
-        raise HTTPException(status_code=422, detail="Filename is required")
+    filename, contents = await _read_upload_file(file)
 
-    suffix = Path(file.filename).suffix or ".png"
-    if file.content_type and not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=415, detail="Only image uploads are supported")
-
-    tmp_path = None
     try:
-        with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            contents = await file.read()
-            tmp.write(contents)
-            tmp_path = tmp.name
-
-        extracted, markdown = extract_from_image(tmp_path)
+        extracted, markdown = extract_from_bytes(contents, filename)
     except ValueError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            os.remove(tmp_path)
 
     return {
-        "filename": file.filename,
+        "filename": filename,
         "extracted": extracted,
         "markdown": markdown,
     }
@@ -230,48 +199,43 @@ async def extract_image(file: UploadFile = File(...)) -> Dict[str, Any]:
 async def extract_and_lookup(file: UploadFile = File(...)) -> Dict[str, Any]:
     """Extract info from an image, then run lookup on the parsed person."""
 
-    extraction = await extract_image(file)  # type: ignore[arg-type]
-    extracted = extraction["extracted"]
+    filename, contents = await _read_upload_file(file)
 
-    basic_info = extracted.get("basic_info", {}) if isinstance(extracted, dict) else {}
-    names = basic_info.get("names", "") if isinstance(basic_info, dict) else ""
-    if not names:
-        raise HTTPException(status_code=502, detail="Unable to extract names from the image")
+    try:
+        result = process_capture(contents, filename)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    parts = names.split()
-    if len(parts) == 1:
-        first_name, last_name = parts[0], parts[0]
-    else:
-        first_name, last_name = parts[0], " ".join(parts[1:])
+    return result
 
-    additional_context = extracted.get("links", {}) if isinstance(extracted, dict) else {}
-    context_parts = []
-    if isinstance(additional_context, dict):
-        for key in ("linkedin", "website", "github"):
-            value = additional_context.get(key)
-            if value:
-                context_parts.append(f"{key}: {value}")
-    company = basic_info.get("company") if isinstance(basic_info, dict) else None
-    if company:
-        context_parts.append(f"company: {company}")
 
-    search_payload = SearchRequest(
-        first_name=first_name,
-        last_name=last_name,
-        additional_context=", ".join(context_parts) or None,
-    )
+@app.post("/capture")
+async def enqueue_capture(file: UploadFile = File(...)) -> Dict[str, str]:
+    """Create a background capture job that extracts, enriches, and saves a person."""
 
-    lookup_result = search_and_enrich(search_payload)
+    filename, contents = await _read_upload_file(file)
 
-    combined = {
-        "filename": extraction["filename"],
-        "markdown": extraction["markdown"],
-        "extracted": extracted,
-    }
-    combined.update(lookup_result)
+    try:
+        job_id = enqueue_capture_job(contents, filename)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    stored = save_person_record(combined)
-    return stored
+    return {"job_id": job_id}
+
+
+@app.get("/capture/{job_id}")
+def capture_status(job_id: str) -> Dict[str, Any]:
+    """Return the current status of a capture job, including result when finished."""
+
+    try:
+        job = get_capture_job(job_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    return job
 
 
 @app.get("/people")
@@ -351,8 +315,16 @@ def chat(payload: ChatRequest) -> Dict[str, str]:
                 "reply": "I didn't recognize that person. Here are the people I can talk about:\n" + preview
             }
 
-    response = "\n\n".join(_format_person_response(record) for record in matched)
-    return {"reply": response}
+    try:
+        reply = generate_chat_reply(message, matched)
+    except Exception as exc:
+        fallback = "\n\n".join(format_person_summary(record) for record in matched)
+        if fallback:
+            reply = fallback
+        else:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {"reply": reply}
 
 
 def _build_search_criteria(payload: SearchRequest) -> str:

@@ -14,6 +14,7 @@ dependencies = [
     "redis>=5.0.0,<6.0.0",
     "agentic-doc>=0.3.3",
     "python-multipart>=0.0.20",
+    "rq>=1.15.1,<2.0.0",
 ]
 
 [project.scripts]

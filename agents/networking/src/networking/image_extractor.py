@@ -6,6 +6,7 @@ import json
 import os
 import re
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any, Dict, Tuple
 
 from agentic_doc.parse import parse
@@ -90,3 +91,19 @@ def extract_from_image(image_path: str) -> Tuple[Dict[str, Any], str]:
         raise ValueError(f"OpenAI response was not valid JSON: {content}") from exc
 
     return extracted, markdown
+
+
+def extract_from_bytes(image_bytes: bytes, filename: str | None = None) -> Tuple[Dict[str, Any], str]:
+    suffix = Path(filename or "capture").suffix or ".png"
+    tmp_path = None
+    try:
+        with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(image_bytes)
+            tmp_path = tmp.name
+        return extract_from_image(tmp_path)
+    finally:
+        if tmp_path:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
